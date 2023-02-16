@@ -195,7 +195,7 @@ def make_database_connection():
     CSVFILES = [csv_file for csv_file in os.listdir(DATASET_DIR) if csv_file.endswith('.csv') \
                 and not (csv_file.endswith('10years.csv') or csv_file.endswith('prices.csv') )]
  
-    for csv_file in CSVFILES[0:1]:
+    for csv_file in CSVFILES:
         tablename = csv_file.split('.')[0]
         csv_filepath = f"{DATASET_DIR}/{csv_file}"    
         csv_df = pd.read_csv(csv_filepath)
