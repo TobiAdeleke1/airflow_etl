@@ -3,7 +3,7 @@ import os
 import json
 import pandas as pd
 import psycopg2
-
+from sqlalchemy import create_engine
 
 
 BASE_DIR =  os.path.dirname(__file__)
@@ -131,27 +131,18 @@ def get_property_type_csv(postcode_houseprices_path):
 
         return dict_path
 
-def db_connection(file_name, table_name):
-     # hERE THE PUrpose it to make connection to the posgreasql database
-      #---> 1. install pip install psycopg2-binary : https://www.psycopg.org/docs/
-      # --> 2. TO create query to postgrql: need a connection object and cursor object, so a function to copy from csv
-    #   conn = psycopg2.connect(database='airflow',
-    #                           host= 'localhost',
-    #                           user= 'airflow',
-    #                           password='airflow',
-    #                           port = '5432' )
-     
-        conn = psycopg2.connect(database='airflow',
-                                user= 'airflow',
-                                password='airflow',
+def db_connection( create_query):
+        # connecting to a database i created locally in pgADMIN called 'airflow_data'
+        conn = psycopg2.connect(database='airflow_data',
+                                user='postgres',
+                                host='localhost',
+                                password='learn2DATA2',
                                 port = '5432' )
         try:
         
             cursor = conn.cursor()
-            # for csv file sep=';'
-            cursor.copy_from(file_name, table_name, sep=';')
-
-            #commit changes to the database persistent
+            # 1. excute query to create the table before appending to it
+            cursor.execute(create_query)
             conn.commit()
         
         except psycopg2.Error as e:
@@ -162,14 +153,55 @@ def db_connection(file_name, table_name):
             cursor.close()
             conn.close()
 
-def make_database_connection(filename_dict):
-    for tablename,filename in filename_dict.item():
-        #store csv to databse
-        db_connection(filename,tablename)
+def sqlalchemy_db_connection(data, table_name):
+     
+     # need to create a table with query (the table schema)
+     create_query = f'''
+                    CREATE TABLE {table_name} (
+                    unique_id INT PRIMARY KEY,
+                    price FLOAT,
+                    date_of_transfer TIMESTAMP,
+                    postcode VARCHAR(10),
+                    property_type VARCHAR(20),
+                    old_or_new VARCHAR(10),
+                    duration VARCHAR(10),
+                    address VARCHAR(255),
+                    city VARCHAR(100),
+                    district VARCHAR(255),
+                    county VARCHAR(255),
+                    ppd_category VARCHAR(255),
+                    year VARCHAR(20),
+                    latitude VARCHAR(20),
+                    longitude VARCHAR(20),
+                    )
+                    '''
+    # create table with pscopy
+     db_connection(create_query)
 
+    # sql alchemy to copy df to created table 
+     user = "postgres"
+     database = "airflow_data"
+     pass_word = "learn2DATA2"
+     host = "127.0.0.1"
+     connection_string = f"postgres://{user}:{pass_word}@{host}/{database}"
+     sql_db = create_engine(connection_string)
+     sql_con = sql_db.connect()
 
-    
-      
+     # data to sql 
+     data.to_sql(table_name, sql_con, if_exists='replace')
+
+def make_database_connection():
+     
+    CSVFILES = [csv_file for csv_file in os.listdir(DATASET_DIR) if csv_file.endswith('.csv') \
+                and not (csv_file.endswith('10years.csv') or csv_file.endswith('prices.csv') )]
  
-    # iterate through the produced files and dump them into the database
-    pass
+    for csv_file in CSVFILES[0:1]:
+        tablename = csv_file.split('.')[0]
+        csv_filepath = f"{DATASET_DIR}/{csv_file}"    
+        csv_df = pd.read_csv(csv_filepath)
+        df_columnlist = [str(col) for col in list(csv_df.columns) if not col.startswith('Unnamed')]
+        clean_df = csv_df[df_columnlist] 
+  
+        #send to database
+        sqlalchemy_db_connection(clean_df,tablename)
+
