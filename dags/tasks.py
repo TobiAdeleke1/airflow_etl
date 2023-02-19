@@ -154,42 +154,48 @@ def db_connection( create_query):
             conn.close()
 
 def sqlalchemy_db_connection(data, table_name):
+     # Drop tables 
+     drop_query = f'''DROP TABLE if exists {table_name}'''
+     db_connection(drop_query)
      
-     # need to create a table with query (the table schema)
+
      create_query = f'''
                     CREATE TABLE {table_name} (
-                    unique_id INT PRIMARY KEY,
-                    price FLOAT,
+                    index INT PRIMARY KEY,
+                    unique_id CHAR(50),
+                    price numeric,
                     date_of_transfer TIMESTAMP,
-                    postcode VARCHAR(10),
-                    property_type VARCHAR(20),
-                    old_or_new VARCHAR(10),
-                    duration VARCHAR(10),
-                    address VARCHAR(255),
-                    city VARCHAR(100),
-                    district VARCHAR(255),
-                    county VARCHAR(255),
-                    ppd_category VARCHAR(255),
-                    year VARCHAR(20),
-                    latitude VARCHAR(20),
-                    longitude VARCHAR(20),
+                    postcode CHAR(10),
+                    property_type CHAR(20),
+                    old_or_new CHAR(10),
+                    duration CHAR(10),
+                    address CHAR(255),
+                    city CHAR(100),
+                    district CHAR(255),
+                    county CHAR(255),
+                    ppd_category CHAR(255),
+                    year CHAR(20),
+                    latitude float8,
+                    longitude float8
                     )
                     '''
+    
     # create table with pscopy
-     db_connection(create_query)
+     db_connection(create_query) 
 
     # sql alchemy to copy df to created table 
      user = "postgres"
      database = "airflow_data"
      pass_word = "learn2DATA2"
-     host = "127.0.0.1"
-     connection_string = f"postgres://{user}:{pass_word}@{host}/{database}"
+     host = "localhost"
+     connection_string = f"postgresql://{user}:{pass_word}@{host}/{database}"
      sql_db = create_engine(connection_string)
      sql_con = sql_db.connect()
 
+
      # data to sql 
      data.to_sql(table_name, sql_con, if_exists='replace')
-
+   
 def make_database_connection():
      
     CSVFILES = [csv_file for csv_file in os.listdir(DATASET_DIR) if csv_file.endswith('.csv') \
@@ -200,8 +206,6 @@ def make_database_connection():
         csv_filepath = f"{DATASET_DIR}/{csv_file}"    
         csv_df = pd.read_csv(csv_filepath)
         df_columnlist = [str(col) for col in list(csv_df.columns) if not col.startswith('Unnamed')]
-        clean_df = csv_df[df_columnlist] 
-  
-        #send to database
+        clean_df = csv_df[df_columnlist]
         sqlalchemy_db_connection(clean_df,tablename)
 
