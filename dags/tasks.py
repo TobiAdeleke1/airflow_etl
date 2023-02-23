@@ -10,6 +10,10 @@ BASE_DIR =  os.path.dirname(__file__)
 DATASET_DIR = f'{BASE_DIR}/datasets'
 os.makedirs(DATASET_DIR,exist_ok=True)
 
+url = 'http://prod.publicdata.landregistry.gov.uk.s3-website-eu-west-1.amazonaws.com/pp-monthly-update-new-version.csv'
+postcode_url ='https://data.freemaptools.com/download/full-uk-postcodes/ukpostcodes.zip' 
+ 
+
 def download_uk_houseprices(uk_url):
 
     uk_download= requests.get(uk_url)  
@@ -19,24 +23,16 @@ def download_uk_houseprices(uk_url):
     return f"{DATASET_DIR}/uk_house_prices.csv"
 
 def import_csv(datasets_path):
-    
-        print(f"imporing file in: {datasets_path}")
         csv_file = pd.read_csv(datasets_path) 
         return csv_file
 
 def get_postcode_dict(uk_postcode_df):
-        print("Generating Postcode dict ")
         postcode_dict= dict(zip(uk_postcode_df['postcode'],zip(uk_postcode_df['latitude'],uk_postcode_df['longitude'])))
         return postcode_dict
 
 def postcode_data(postcode_url):
-      
-        print("Downloading UK postcode dataset ...")
         POSTCODE_DIR= f'{DATASET_DIR}/postcode'
-        os.makedirs(POSTCODE_DIR,exist_ok=True)
-        # postcode_url ='https://data.freemaptools.com/download/full-uk-postcodes/ukpostcodes.zip'  
-        
-        
+        os.makedirs(POSTCODE_DIR,exist_ok=True)    
         postcode_download= requests.get(postcode_url)  
 
         with open(f"{POSTCODE_DIR}/postcode.zip",'wb') as c:
@@ -53,7 +49,6 @@ def get_10years_houseprice(uk_houseprice_df):
     """
     
     """
-    print(f"Processing UK houses price, to only use past 10 years")
     #random column name generation
     name_list= [f"name_{num}" for num in range(0,len(uk_houseprice_df.columns))]
     #reset columns
@@ -73,10 +68,7 @@ def get_10years_houseprice(uk_houseprice_df):
 
 def get_merged_postcode_houseprices(postcode_json,houseprices_csv):
   
-    print("Merging Postcode data to House Prices data ..")
-
     houseprices_v1df = import_csv(houseprices_csv)
-    # clean the 10 years
     houseprices_path = get_10years_houseprice(houseprices_v1df)
     houseprices_df = import_csv(houseprices_path)
 
@@ -101,8 +93,6 @@ def get_merged_postcode_houseprices(postcode_json,houseprices_csv):
 
 def get_property_type_csv(postcode_houseprices_path):
     
-
-        print("Splitting the House prices based on Data type")
         """
         # Split data based on property type:
         D = Detached, S = Semi-Detached, T = Terraced, 
@@ -135,13 +125,11 @@ def db_connection( create_query):
         # connecting to a database i created locally in pgADMIN called 'airflow_data'
         conn = psycopg2.connect(database='airflow_data',
                                 user='postgres',
-                                host='localhost',
+                                host='host.docker.internal',
                                 password='learn2DATA2',
                                 port = '5432' )
         try:
-        
             cursor = conn.cursor()
-            # 1. excute query to create the table before appending to it
             cursor.execute(create_query)
             conn.commit()
         
@@ -187,7 +175,7 @@ def sqlalchemy_db_connection(data, table_name):
      user = "postgres"
      database = "airflow_data"
      pass_word = "learn2DATA2"
-     host = "localhost"
+     host = "host.docker.internal"
      connection_string = f"postgresql://{user}:{pass_word}@{host}/{database}"
      sql_db = create_engine(connection_string)
      sql_con = sql_db.connect()
