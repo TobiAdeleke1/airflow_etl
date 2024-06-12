@@ -1,0 +1,10 @@
+__pycache__
+plugins
+helpers
+logs
+requirements.txt
+projectenv
+datasets
+config.yaml
+
+
